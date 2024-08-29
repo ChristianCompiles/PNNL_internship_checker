@@ -3,16 +3,12 @@ import requests
 import json
 import time
 import schedule
-import csv
 import os
 
 secret_token = '' # str
-guild_id = 0 # int
+guild_id = 0 # (server id) int
 channel_id = 0 # int 
-
-# Example usage
-# file_path = 'example.csv'
-# headers = ['Title', 'Req-Id', 'app-link']
+debug = False
 
 def scrape_site():
     '''
@@ -53,7 +49,8 @@ def check_and_write(pot_new_jobs_list: list):
     file_exists = os.path.isfile(file_path)
     
     if file_exists:
-        print(f"File '{file_path}' already exists. Opening file.")
+        if debug:
+            print(f"File '{file_path}' already exists. Opening file.")
         with open(file_path, 'r+') as file:
             list_of_old_jobs = json.load(file)
 
@@ -68,7 +65,8 @@ def check_and_write(pot_new_jobs_list: list):
 
             for old_job in list_of_old_jobs: # iterate over list of old jobs
                 if pot_new_req_id == old_job[u_k]:
-                    print(f"found match: {pot_new_req_id}")
+                    if debug:
+                        print(f"found match: {pot_new_req_id}")
                     matched = True
                     break
                 
@@ -88,6 +86,7 @@ def check_and_write(pot_new_jobs_list: list):
     else: # file doesn't exist
         with open(file_path, 'w') as file:
             json.dump(pot_new_jobs_list, file)
+        return pot_new_jobs_list
 
 def condense_to_list_of_json(json_jobs: json):
         '''
@@ -120,55 +119,11 @@ def condense_to_list_of_json(json_jobs: json):
         if len(internships) > 0:
             return internships
         else:
-            print("Empty list of internships, returning: None.")
+            if debug:
+                print("Empty list of internships, returning: None.")
             return None
 
 class MyClient(discord.Client):
-    # async def __check_internships__(self):
-    #     url = "https://careers.pnnl.gov/api/jobs"
-    #     params = {
-    #         "tags2": "University Internships",
-    #         "limit": 100,
-    #         "page": 1
-    #     }
-    #     headers = {
-    #         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
-    #     }
-
-    #     response = requests.get(url, params=params, headers=headers)
-        
-    #     if response.status_code != 200:
-    #         print(f"Failed to fetch data: HTTP {response.status_code}")
-    #         return
-
-    #     try:
-    #         jobs = response.json()
-    #     except json.JSONDecodeError:
-    #         print("Failed to parse JSON response")
-    #         return
-    
-    #     internships = []
-    #     list_of_jobs = jobs.get('jobs')
-    #     for wrapper_job in list_of_jobs:
-    #         job = wrapper_job['data']
-    #         title = job.get('title')
-    #         job_id = job.get('req_id')
-    #         link = f'https://careers.pnnl.gov/jobs/{job_id}'
-    #         internships.append(title + " " + link)
-
-    #     f = open("internships.txt", "w")
-
-    #     for job in internships:
-    #         f.write(job)
-    #         f.write("\n")
-    #         await self.channel.send(job)
-
-    # async def __run_scheduler__(self):
-    #     await schedule.every(10).seconds.do(self.__check_internships__)
-    #     while True:
-    #         schedule.run_pending()
-    #         time.sleep(1)
-
     async def on_ready(self):
         print(f'Logged on as {self.user}!')
         self.guild = client.get_guild(guild_id)
@@ -182,7 +137,8 @@ class MyClient(discord.Client):
         if self.channel is None:
             await print(f"Couldn't find a channel with ID: {channel_id} in the guild {self.guild.name}")
             return
-        await self.channel.send("bot is online!")
+        if debug:
+            await self.channel.send("bot is online!")
 
         full_json = scrape_site()
         condensed_list = condense_to_list_of_json(full_json)
@@ -193,6 +149,8 @@ class MyClient(discord.Client):
                 msg = job['link']
                 if msg is not None:
                     await self.channel.send(msg)
+        else:
+            print("No new internships.")
 
         #await self.__check_internships__()
         #self.__run_scheduler__()
