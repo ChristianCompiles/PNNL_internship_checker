@@ -3,57 +3,171 @@ import requests
 import json
 import time
 import schedule
+import csv
+import os
 
-secret_token = 0
-guild_id = 0
-channel_id = 0
+secret_token = '' # str
+guild_id = 0 # int
+channel_id = 0 # int 
+
+# Example usage
+# file_path = 'example.csv'
+# headers = ['Title', 'Req-Id', 'app-link']
+
+def scrape_site():
+    '''
+    Scrape URL with params and headers for jobs json.
+    '''
+
+    url = "https://careers.pnnl.gov/api/jobs"
+    params = {
+        "tags2": "University Internships",
+        "limit": 100,
+        "page": 1
+    }
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+    }
+
+    response = requests.get(url, params=params, headers=headers)
+    
+    if response.status_code != 200:
+        print(f"Failed to fetch data: HTTP {response.status_code}.\nExiting.")
+        return
+
+    try:
+        jobs_json = response.json()
+        return jobs_json
+    except json.JSONDecodeError:
+        print("Failed to parse JSON response.\nExiting")
+        return
+
+def check_and_write(pot_new_jobs_list: list):
+    '''
+    Check if jobs are new.
+    Store new jobs in file.
+    Return list of new jobs.
+    '''
+
+    file_path = "bot_internships.json"
+    file_exists = os.path.isfile(file_path)
+    
+    if file_exists:
+        print(f"File '{file_path}' already exists. Opening file.")
+        with open(file_path, 'r+') as file:
+            list_of_old_jobs = json.load(file)
+
+        matched = False
+
+        list_of_new_jobs = [] # store dicts temporarily and add after all comparisons
+
+        u_k = 'req_id' # check uniqueness via requisition-id
+
+        for pot_new_job in pot_new_jobs_list: # iterate over list of potentially new jobs
+            pot_new_req_id = pot_new_job[u_k] 
+
+            for old_job in list_of_old_jobs: # iterate over list of old jobs
+                if pot_new_req_id == old_job[u_k]:
+                    print(f"found match: {pot_new_req_id}")
+                    matched = True
+                    break
+                
+            if matched == False: # if they didn't match, then its new, so append to list
+                list_of_new_jobs.append(pot_new_job)
+            
+            matched = False # reset to not matched
+        
+        for job in list_of_new_jobs: # now that all checks completed, add new jobs to old jobs list
+            list_of_old_jobs.append(job)
+        
+        if len(list_of_new_jobs) > 0: # if we added to list, then write
+            with open(file_path, 'w') as file:
+                json.dump(list_of_old_jobs, file)
+            return list_of_new_jobs
+                
+    else: # file doesn't exist
+        with open(file_path, 'w') as file:
+            json.dump(pot_new_jobs_list, file)
+
+def condense_to_list_of_json(json_jobs: json):
+        '''
+        Condense requested json to list of dicts holding:
+        req-id, title, application link
+        '''
+
+        internships = []
+        list_of_jobs = json_jobs.get('jobs')
+        for wrapper_job in list_of_jobs:
+            job_info = {}
+
+            job = wrapper_job['data']
+            
+            if job is None:
+                print("Error parsing json.\nExiting")
+
+            title = job.get('title')
+            if title is not None:
+                job_info['title'] = title
+            
+            job_id = job.get('req_id')
+            if job_id is not None:
+                job_info['req_id'] = job_id
+
+            job_info['link'] = f'https://careers.pnnl.gov/jobs/{job_id}'
+
+            internships.append(job_info)
+        
+        if len(internships) > 0:
+            return internships
+        else:
+            print("Empty list of internships, returning: None.")
+            return None
 
 class MyClient(discord.Client):
+    # async def __check_internships__(self):
+    #     url = "https://careers.pnnl.gov/api/jobs"
+    #     params = {
+    #         "tags2": "University Internships",
+    #         "limit": 100,
+    #         "page": 1
+    #     }
+    #     headers = {
+    #         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+    #     }
 
-    async def __check_internships__(self):
-        url = "https://careers.pnnl.gov/api/jobs"
-        params = {
-            "tags2": "University Internships",
-            "limit": 100,
-            "page": 1
-        }
-        headers = {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
-        }
-
-        response = requests.get(url, params=params, headers=headers)
+    #     response = requests.get(url, params=params, headers=headers)
         
-        if response.status_code != 200:
-            print(f"Failed to fetch data: HTTP {response.status_code}")
-            return
+    #     if response.status_code != 200:
+    #         print(f"Failed to fetch data: HTTP {response.status_code}")
+    #         return
 
-        try:
-            jobs = response.json()
-        except json.JSONDecodeError:
-            print("Failed to parse JSON response")
-            return
+    #     try:
+    #         jobs = response.json()
+    #     except json.JSONDecodeError:
+    #         print("Failed to parse JSON response")
+    #         return
     
-        internships = []
-        list_of_jobs = jobs.get('jobs')
-        for wrapper_job in list_of_jobs:
-            job = wrapper_job['data']
-            title = job.get('title')
-            job_id = job.get('req_id')
-            link = f'https://careers.pnnl.gov/jobs/{job_id}'
-            internships.append(title + " " + link)
+    #     internships = []
+    #     list_of_jobs = jobs.get('jobs')
+    #     for wrapper_job in list_of_jobs:
+    #         job = wrapper_job['data']
+    #         title = job.get('title')
+    #         job_id = job.get('req_id')
+    #         link = f'https://careers.pnnl.gov/jobs/{job_id}'
+    #         internships.append(title + " " + link)
 
-        f = open("internships.txt", "w")
+    #     f = open("internships.txt", "w")
 
-        for job in internships:
-            f.write(job)
-            f.write("\n")
-            await self.channel.send(job)
+    #     for job in internships:
+    #         f.write(job)
+    #         f.write("\n")
+    #         await self.channel.send(job)
 
-    async def __run_scheduler__(self):
-        await schedule.every(10).seconds.do(self.__check_internships__)
-        while True:
-            schedule.run_pending()
-            time.sleep(1)
+    # async def __run_scheduler__(self):
+    #     await schedule.every(10).seconds.do(self.__check_internships__)
+    #     while True:
+    #         schedule.run_pending()
+    #         time.sleep(1)
 
     async def on_ready(self):
         print(f'Logged on as {self.user}!')
@@ -63,7 +177,6 @@ class MyClient(discord.Client):
             print(f"Couldn't find a guild with ID: {guild_id}")
             return
 
-        # Get the channel by ID within the specified guild
         self.channel = self.guild.get_channel(channel_id)
     
         if self.channel is None:
@@ -71,12 +184,21 @@ class MyClient(discord.Client):
             return
         await self.channel.send("bot is online!")
 
-        await self.__check_internships__()
+        full_json = scrape_site()
+        condensed_list = condense_to_list_of_json(full_json)
+        list_of_new_jobs = check_and_write(condensed_list)
+
+        if list_of_new_jobs is not None:
+            for job in list_of_new_jobs:
+                msg = job['link']
+                if msg is not None:
+                    await self.channel.send(msg)
+
+        #await self.__check_internships__()
         #self.__run_scheduler__()
 
     async def on_message(self, message):
         print(f'Message from {message.author}: {message.content}')
-
 
 intents = discord.Intents.default()
 intents.message_content = True
