@@ -1,12 +1,15 @@
-import discord
+import datetime
 import requests
 import json
-import time
-import schedule
+import pytz
 import os
+from discord.ext import commands, tasks
 
-class clientWrapper(discord.Client):
-    def __init__(self, intents, config_file_path: str, save_path: str, debug: bool):
+#time = datetime.time(hour=20, minute=37,second=59, tzinfo=pytz.timezone("Europe/Prague"))
+
+class DailyScrape(commands.Cog):
+    def __init__(self, bot, config_file_path, save_path, debug) -> None:
+       
         self.config_file_path = config_file_path
         self.save_path  = save_path
         self.debug = debug
@@ -27,31 +30,16 @@ class clientWrapper(discord.Client):
             except:
                 print("error gather input for configuration.\nExiting.")
                 exit(0)
-
-        super().__init__(intents=intents)
-        self.run(self.token)
-
-    async def on_ready(self):
-        if self.debug:
-            print(f'{self.user} has connected to Discord!')
-            print(f'Bot is in {len(self.guilds)} servers:')
-            for guild in self.guilds:
-                print(f' - {guild.name} (id: {guild.id})')
-
-        self.guild = self.get_guild(self.guild_id)
-
-        if self.guild is None:
-            print(f"Couldn't find a guild with ID: {self.guild_id}")
-            return
-
-        self.channel = self.guild.get_channel(self.channel_id)
     
-        if self.channel is None:
-            await print(f"Couldn't find a channel with ID: {self.channel_id} in the guild {self.guild.name}")
-            return
-        if self.debug:
-            await self.channel.send("bot is online!")
-        
+        self.bot = bot
+
+    @tasks.loop(seconds=10 )#time=time)
+    async def my_task(self) -> None:
+        now = datetime.datetime.now()
+        print("running loop:", now)
+        await self.__wrap_full_process__()
+
+    async def __wrap_full_process__(self):
         full_json = self.__scrape_site__()
         condensed_list = self.__condense_to_list_of_json__(full_json)
         list_of_new_jobs = self.__check_and_write__(condensed_list)
@@ -63,23 +51,6 @@ class clientWrapper(discord.Client):
                     await self.channel.send(msg)
         else:
             print("No new internships.")
-
-        #await self.__check_internships__()
-        #self.__run_scheduler__()
-
-    async def on_message(self, message):
-        if message.author == self.user and self.debug:
-            print(message.content)
-            return
-
-        # if message.content.startswith('!hello'):
-        #     await message.channel.send(f'Hello! I am in the server: {message.guild.name}')
-
-        # elif message.content.startswith('!serverinfo'):
-        #     guild = message.guild
-        #     await message.channel.send(f'Server Name: {guild.name}\n'
-        #                                f'Server ID: {guild.id}\n'
-        #                                f'Member Count: {guild.member_count}')
 
     def __scrape_site__(self):
         '''
@@ -118,7 +89,7 @@ class clientWrapper(discord.Client):
 
         file_exists = os.path.isfile(self.save_path)
         
-        if file_exists:
+        if file_exists and (os.stat(self.save_path).st_size > 0):
             if self.debug:
                 print(f"File '{self.save_path}' already exists. Opening file.")
             with open(self.save_path, 'r+') as file:
@@ -192,14 +163,17 @@ class clientWrapper(discord.Client):
             if self.debug:
                 print("Empty list of internships, returning: None.")
             return None
+        
+    @commands.Cog.listener()
+    async def on_ready(self):
+        print(f"{self.bot.user} is ready and online!")
+        self.guild = self.bot.get_guild(self.guild_id)
+        self.channel = self.bot.get_channel(self.channel_id)
+        self.my_task.start()
 
-def main():
-    intents = discord.Intents.default() # Set up intents
-    intents.message_content = True
-    intents.guilds = True  # Needed to access guild information
+    # @discord.slash_command(name="hello", description="Say hello to the bot")
+    # async def hello(ctx: discord.ApplicationContext):
+    #     await ctx.respond("Hey!")
 
-    client = clientWrapper(intents=intents, config_file_path="config.json", save_path="scraped_jobs.json", debug = False) # Create an instance of the client
-
-# Run the client
-if __name__ == "__main__":
-    main()
+def setup(bot) -> None:
+    bot.add_cog(DailyScrape(bot, config_file_path="config.json", save_path="scraped_jobs.json", debug = False))
