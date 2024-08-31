@@ -1,39 +1,35 @@
+from discord.ext import commands, tasks
+import discord
 import datetime
 import requests
 import json
 import os
-from discord.ext import commands, tasks
 
 class DailyScrape(commands.Cog):
     def __init__(self, bot, config_file_path, save_path, debug) -> None:
        
         self.config_file_path = config_file_path
-        self.save_path  = save_path
+        self.save_path = save_path
         self.debug = debug
 
-        config_file_exists = os.path.isfile(config_file_path)
-        if config_file_exists:
+        if os.path.isfile(config_file_path):
             with open(config_file_path, 'r+') as opened_config_file:
-                config_data = json.load(opened_config_file)
-                self.token = config_data['token'] # secret token: str
-                self.guild_id = config_data['guild_id'] # server id: int
-                self.channel_id = config_data['channel_id'] # text channel: int 
+                try:
+                    config_data = json.load(opened_config_file)
+                    self.guild_id = config_data['guild_id'] # server id: int
+                    self.channel_id = config_data['channel_id'] # text channel: int 
+                except Exception as e:
+                    print(f"An error occurred: {e}.\nExiting.")
+                    exit(0)
         else:
-            print("Config file does not exist.")
-            try:
-                self.token = str(input("enter secret token: "))
-                self.guild_id = int(input("Enter guild id: "))
-                self.channel_id = int(input("Enter channel id: "))
-            except:
-                print("error gather input for configuration.\nExiting.")
-                exit(0)
+            print("Config file does not exist.\nExiting.")
+            exit(0)
     
         self.bot = bot
 
-    @tasks.loop(seconds=10 )#time=time)
+    @tasks.loop(seconds= 10)
     async def my_task(self) -> None:
-        now = datetime.datetime.now()
-        print("running loop:", now)
+        print("running loop:", datetime.datetime.now())
         await self.__wrap_full_process__()
 
     async def __wrap_full_process__(self):
@@ -45,7 +41,19 @@ class DailyScrape(commands.Cog):
             for job in list_of_new_jobs:
                 msg = job['link']
                 if msg is not None:
-                    await self.channel.send(msg)
+                    # iterate over all servers
+                    await self.bot.wait_until_ready()
+                    for guild in self.bot.guilds:
+                        print(guild.id)
+                        #print(f"{self.bot.user} is ready and online!")
+                        # self.guild = self.bot.get_guild(ctx.guild.id)
+                        channel = discord.utils.get(guild.text_channels, name="job-postings")
+                        #self.channel = self.bot.get_channel(self.channel_id) 
+                        if channel is not None:
+                            await channel.send(msg)
+                        else:
+                            if self.debug:
+                                print(f"guild: {guild.name} does not have channel name")
         else:
             print("No new internships.")
 
@@ -160,14 +168,17 @@ class DailyScrape(commands.Cog):
             if self.debug:
                 print("Empty list of internships, returning: None.")
             return None
+
+    @commands.Cog.listener()
+    async def on_guild_join(self, guild):
+        print("on_guild_join()")
+        
         
     @commands.Cog.listener()
     async def on_ready(self):
-        print(f"{self.bot.user} is ready and online!")
-        self.guild = self.bot.get_guild(self.guild_id)
-        self.channel = self.bot.get_channel(self.channel_id)
+        print("on_ready()")
         self.my_task.start()
-
+        
     # @discord.slash_command(name="hello", description="Say hello to the bot")
     # async def hello(ctx: discord.ApplicationContext):
     #     await ctx.respond("Hey!")
