@@ -1,11 +1,8 @@
 import datetime
 import requests
 import json
-import pytz
 import os
 from discord.ext import commands, tasks
-
-#time = datetime.time(hour=20, minute=37,second=59, tzinfo=pytz.timezone("Europe/Prague"))
 
 class DailyScrape(commands.Cog):
     def __init__(self, bot, config_file_path, save_path, debug) -> None:
