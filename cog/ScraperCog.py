@@ -6,30 +6,15 @@ import json
 import os
 
 class DailyScrape(commands.Cog):
-    def __init__(self, bot, config_file_path, save_path, debug) -> None:
+    def __init__(self, bot, save_path, debug) -> None:
        
-        self.config_file_path = config_file_path
-        self.save_path = save_path
-        self.debug = debug
-
-        if os.path.isfile(config_file_path):
-            with open(config_file_path, 'r+') as opened_config_file:
-                try:
-                    config_data = json.load(opened_config_file)
-                    self.guild_id = config_data['guild_id'] # server id: int
-                    self.channel_id = config_data['channel_id'] # text channel: int 
-                except Exception as e:
-                    print(f"An error occurred: {e}.\nExiting.")
-                    exit(0)
-        else:
-            print("Config file does not exist.\nExiting.")
-            exit(0)
-    
         self.bot = bot
+        self.save_path = save_path
+        self.debug = debug       
 
     @tasks.loop(seconds= 10)
     async def my_task(self) -> None:
-        print("running loop:", datetime.datetime.now())
+        print("Scraping:", datetime.datetime.now())
         await self.__wrap_full_process__()
 
     async def __wrap_full_process__(self):
@@ -45,10 +30,7 @@ class DailyScrape(commands.Cog):
                     await self.bot.wait_until_ready()
                     for guild in self.bot.guilds:
                         print(guild.id)
-                        #print(f"{self.bot.user} is ready and online!")
-                        # self.guild = self.bot.get_guild(ctx.guild.id)
                         channel = discord.utils.get(guild.text_channels, name="job-postings")
-                        #self.channel = self.bot.get_channel(self.channel_id) 
                         if channel is not None:
                             await channel.send(msg)
                         else:
@@ -91,10 +73,8 @@ class DailyScrape(commands.Cog):
         Store new jobs in file.
         Return list of new jobs.
         '''
-
-        file_exists = os.path.isfile(self.save_path)
         
-        if file_exists and (os.stat(self.save_path).st_size > 0):
+        if os.path.isfile(self.save_path) and (os.stat(self.save_path).st_size > 0):
             if self.debug:
                 print(f"File '{self.save_path}' already exists. Opening file.")
             with open(self.save_path, 'r+') as file:
@@ -170,18 +150,30 @@ class DailyScrape(commands.Cog):
             return None
 
     @commands.Cog.listener()
-    async def on_guild_join(self, guild):
-        print("on_guild_join()")
+    async def on_guild_join(self, guild): # give enter scraped list on server join
+        print("joined guild!")
+        channel = discord.utils.get(guild.text_channels, name="job-postings")
+        if channel is None:
+            return
+        if not os.path.isfile(self.save_path) or (os.stat(self.save_path).st_size <= 0):
+            return
         
+        with open(self.save_path, 'r+') as file:
+            list_of_jobs = json.load(file)
+
+            if list_of_jobs is None:
+                return
+            
+            for job in list_of_jobs:
+                app_link = job["link"]
+                if app_link is None:
+                    return
+                await channel.send(app_link)
         
     @commands.Cog.listener()
     async def on_ready(self):
         print("on_ready()")
         self.my_task.start()
-        
-    # @discord.slash_command(name="hello", description="Say hello to the bot")
-    # async def hello(ctx: discord.ApplicationContext):
-    #     await ctx.respond("Hey!")
 
 def setup(bot) -> None:
-    bot.add_cog(DailyScrape(bot, config_file_path="config.json", save_path="scraped_jobs.json", debug = False))
+    bot.add_cog(DailyScrape(bot, save_path="scraped_jobs.json", debug = False))

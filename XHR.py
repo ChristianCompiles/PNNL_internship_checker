@@ -50,3 +50,4 @@ def run_scheduler():
 if __name__ == "__main__":
     check_internships()  # Run once immediately
     run_scheduler()  # Then run every 12 hours
+    
