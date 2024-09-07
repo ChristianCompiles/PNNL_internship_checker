@@ -14,7 +14,7 @@ class DailyScrape(commands.Cog):
 
     @tasks.loop(hours= 24)
     async def my_task(self) -> None:
-        print("Scraping:", datetime.datetime.now())
+        print("Scraping:", datetime.datetime.now(), flush=True)
         await self.__wrap_full_process__()
 
     async def __wrap_full_process__(self):
@@ -29,15 +29,15 @@ class DailyScrape(commands.Cog):
                     # iterate over all servers
                     await self.bot.wait_until_ready()
                     for guild in self.bot.guilds:
-                        print(guild.id)
+                        print(guild.id, flush=True)
                         channel = discord.utils.get(guild.text_channels, name="job-postings")
                         if channel is not None:
                             await channel.send(msg)
                         else:
                             if self.debug:
-                                print(f"guild: {guild.name} does not have channel name")
+                                print(f"guild: {guild.name} does not have channel name", flush=True)
         else:
-            print("No new internships.")
+            print("No new internships.", flush=True)
 
     def __scrape_site__(self):
         '''
@@ -57,14 +57,14 @@ class DailyScrape(commands.Cog):
         response = requests.get(url, params=params, headers=headers)
         
         if response.status_code != 200:
-            print(f"Failed to fetch data: HTTP {response.status_code}.\nExiting.")
+            print(f"Failed to fetch data: HTTP {response.status_code}.\nExiting.", flush=True)
             return
 
         try:
             jobs_json = response.json()
             return jobs_json
         except json.JSONDecodeError:
-            print("Failed to parse JSON response.\nExiting")
+            print("Failed to parse JSON response.\nExiting", flush=True)
             return
 
     def __check_and_write__(self, pot_new_jobs_list: list):
@@ -76,7 +76,7 @@ class DailyScrape(commands.Cog):
         
         if os.path.isfile(self.save_path) and (os.stat(self.save_path).st_size > 0):
             if self.debug:
-                print(f"File '{self.save_path}' already exists. Opening file.")
+                print(f"File '{self.save_path}' already exists. Opening file.", flush=True)
             with open(self.save_path, 'r+') as file:
                 list_of_old_jobs = json.load(file)
 
@@ -92,7 +92,7 @@ class DailyScrape(commands.Cog):
                 for old_job in list_of_old_jobs: # iterate over list of old jobs
                     if pot_new_req_id == old_job[u_k]:
                         if self.debug:
-                            print(f"found match: {pot_new_req_id}")
+                            print(f"found match: {pot_new_req_id}", flush=True)
                         matched = True
                         break
                     
@@ -128,7 +128,7 @@ class DailyScrape(commands.Cog):
             job = wrapper_job['data']
             
             if job is None:
-                print("Error parsing json.\nExiting")
+                print("Error parsing json.\nExiting", flush=True)
 
             title = job.get('title')
             if title is not None:
@@ -146,13 +146,13 @@ class DailyScrape(commands.Cog):
             return internships
         else:
             if self.debug:
-                print("Empty list of internships, returning: None.")
+                print("Empty list of internships, returning: None.", flush=True)
             return None
 
     @commands.Cog.listener()
     async def on_guild_join(self, guild): # give enter scraped list on server join
         print("joined guild!")
-        channel = discord.utils.get(guild.text_channels, name="job-postings")
+        channel = discord.utils.get(guild.text_channels, name="job-postings", flush=True)
         if channel is None:
             return
         if not os.path.isfile(self.save_path) or (os.stat(self.save_path).st_size <= 0):
@@ -172,7 +172,7 @@ class DailyScrape(commands.Cog):
         
     @commands.Cog.listener()
     async def on_ready(self):
-        print("on_ready()")
+        print("on_ready()", flush=True)
         self.my_task.start()
 
 def setup(bot) -> None:
