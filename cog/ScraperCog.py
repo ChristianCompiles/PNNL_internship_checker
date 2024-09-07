@@ -12,7 +12,7 @@ class DailyScrape(commands.Cog):
         self.save_path = save_path
         self.debug = debug       
 
-    @tasks.loop(seconds= 10)
+    @tasks.loop(hours= 24)
     async def my_task(self) -> None:
         print("Scraping:", datetime.datetime.now())
         await self.__wrap_full_process__()
