@@ -8,7 +8,7 @@ intents = discord.Intents.default()
 intents.message_content = True
 intents.guilds = True
 
-bot = commands.Bot(intents)
+bot = commands.Bot(command_prefix='..!', intents=intents)
 bot.load_extension('cog.ScraperCog')
 
 bot.run(os.getenv('TOKEN')) # run the bot with the token
