@@ -12,7 +12,7 @@ class DailyScrape(commands.Cog):
         self.save_path = save_path
         self.debug = debug       
 
-    @tasks.loop(hours= 24)
+    @tasks.loop(minutes= 10)
     async def my_task(self) -> None:
         print("Scraping:", datetime.datetime.now(), flush=True)
         await self.__wrap_full_process__()
@@ -22,23 +22,36 @@ class DailyScrape(commands.Cog):
         condensed_list = self.__condense_to_list_of_json__(full_json)
         list_of_new_jobs = self.__check_and_write__(condensed_list)
 
-        if list_of_new_jobs is not None:
-            for job in list_of_new_jobs:
-                msg = job['link']
-                if msg is not None:
-                    # iterate over all servers
-                    await self.bot.wait_until_ready()
-                    for guild in self.bot.guilds:
-                        print(guild.id, flush=True)
-                        channel = discord.utils.get(guild.text_channels, name="job-postings")
-                        if channel is not None:
-                            await channel.send(msg)
-                        else:
-                            if self.debug:
-                                print(f"guild: {guild.name} does not have channel name", flush=True)
-        else:
+        if list_of_new_jobs is None:
             print("No new internships.", flush=True)
+            return
+        
+        for job in list_of_new_jobs:
+            msg = job['link']
+            title = job['title']
+            
+            if msg is None:
+                continue
+            # iterate over all servers
+            await self.bot.wait_until_ready()
+            for guild in self.bot.guilds:
+                
+                if guild.name == "Coding Cougs on Campus":
 
+                    if title is not None:
+                        if "Post" in title and "Masters" in title: # skip Post Masters opportunities
+                            continue
+                        if "PhD" in title: # skip PhD opportunities
+                            continue
+
+                print(guild.id, flush=True)
+                channel = discord.utils.get(guild.text_channels, name="job-postings")
+                if channel is not None:
+                    await channel.send(msg)
+                else:
+                    if self.debug:
+                        print(f"guild: {guild.name} does not have channel name", flush=True)
+        
     def __scrape_site__(self):
         '''
         Scrape URL with params and headers for jobs json.

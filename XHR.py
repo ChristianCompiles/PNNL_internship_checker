@@ -3,6 +3,9 @@ import json
 import time
 import schedule
 
+# This script is not used by the Discord bot.
+# It was developed to test the scraping and data collection.
+
 def check_internships():
     url = "https://careers.pnnl.gov/api/jobs"
     params = {
@@ -42,12 +45,12 @@ def check_internships():
         f.write("\n")
 
 def run_scheduler():
-    schedule.every(12).hours.do(check_internships)
+    schedule.every(5).minutes.do(check_internships)
     while True:
         schedule.run_pending()
         time.sleep(1)
 
 if __name__ == "__main__":
     check_internships()  # Run once immediately
-    run_scheduler()  # Then run every 12 hours
+    run_scheduler()  
     
