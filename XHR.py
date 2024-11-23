@@ -1,7 +1,7 @@
 import requests
 import json
 import time
-import schedule
+#import schedule
 
 # This script is not used by the Discord bot.
 # It was developed to test the scraping and data collection.
@@ -31,6 +31,12 @@ def check_internships():
    
     internships = []
     list_of_jobs = jobs.get('jobs')
+
+    i = open("example_json.json", "w")
+    for job in list_of_jobs:
+        i.write(str(job))
+        i.write("\n")
+
     for wrapper_job in list_of_jobs:
         job = wrapper_job['data']
         title = job.get('title')
@@ -44,13 +50,13 @@ def check_internships():
         f.write(job)
         f.write("\n")
 
-def run_scheduler():
-    schedule.every(5).minutes.do(check_internships)
-    while True:
-        schedule.run_pending()
-        time.sleep(1)
+# def run_scheduler():
+#     schedule.every(5).minutes.do(check_internships)
+#     while True:
+#         schedule.run_pending()
+#         time.sleep(1)
 
 if __name__ == "__main__":
     check_internships()  # Run once immediately
-    run_scheduler()  
+    #run_scheduler()  
     
