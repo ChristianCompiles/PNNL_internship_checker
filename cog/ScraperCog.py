@@ -10,9 +10,10 @@ class DailyScrape(commands.Cog):
        
         self.bot = bot
         self.save_path = save_path
-        self.debug = debug       
+        self.debug = debug     
+        self.my_task.start()  
 
-    @tasks.loop(minutes= 10)
+    @tasks.loop(hours= 1)
     async def my_task(self) -> None:
         print("Scraping:", datetime.datetime.now(), flush=True)
         await self.__wrap_full_process__()
@@ -182,11 +183,6 @@ class DailyScrape(commands.Cog):
                 if app_link is None:
                     return
                 await channel.send(app_link)
-        
-    @commands.Cog.listener()
-    async def on_ready(self):
-        print("on_ready()", flush=True)
-        self.my_task.start()
-
-def setup(bot) -> None:
-    bot.add_cog(DailyScrape(bot, save_path="scraped_jobs.json", debug = False))
+                
+async def setup(bot) -> None:
+    await bot.add_cog(DailyScrape(bot, save_path="scraped_jobs.json", debug = True))
