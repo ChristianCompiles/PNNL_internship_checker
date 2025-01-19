@@ -30,6 +30,9 @@ def check_internships():
         return
    
     internships = []
+
+    attachments = []
+
     list_of_jobs = jobs.get('jobs')
 
     i = open("example_json.json", "w")
@@ -40,15 +43,25 @@ def check_internships():
     for wrapper_job in list_of_jobs:
         job = wrapper_job['data']
         title = job.get('title')
+        description = job.get('description')
+        responsibilities = job.get('responsibilities')
         job_id = job.get('req_id')
         link = f'https://careers.pnnl.gov/jobs/{job_id}'
         internships.append(title + " " + link)
+
+        attachments.append(title + "\n\nResponsiblities:\n\n" + responsibilities + "\n\nDescription:\n\n" + description)
 
     f = open("internships.txt", "w")
 
     for job in internships:
         f.write(job)
         f.write("\n")
+
+    f = open("attachments.txt", "w")
+
+    for a in attachments:
+        f.write(a)
+        f.write("\n\n")
 
 # def run_scheduler():
 #     schedule.every(5).minutes.do(check_internships)

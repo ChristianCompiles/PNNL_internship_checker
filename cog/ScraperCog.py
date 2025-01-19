@@ -1,5 +1,6 @@
 from discord.ext import commands, tasks
 import discord
+from io import BytesIO
 import datetime
 import requests
 import json
@@ -22,23 +23,27 @@ class DailyScrape(commands.Cog):
         full_json = self.__scrape_site__()
         condensed_list = self.__condense_to_list_of_json__(full_json)
         list_of_new_jobs = self.__check_and_write__(condensed_list)
-
+       
         if list_of_new_jobs is None:
             print("No new internships.", flush=True)
             return
         
         for job in list_of_new_jobs:
             msg = job['link']
-            title = job['title']
-            
             if msg is None:
                 continue
-            # iterate over all servers
-            await self.bot.wait_until_ready()
-            for guild in self.bot.guilds:
-                
-                if guild.name == "Coding Cougs on Campus":
 
+            title = job['title']
+            description = job['description']
+            responsibilities = job['responsibilities']
+            
+            attachment = title + "\n" + msg + "\n\n" + "Responsibilities:\n" + responsibilities + "\n\n" + "Description:\n" + description
+            attachment_io = BytesIO(attachment.encode('utf-8'))
+            
+            await self.bot.wait_until_ready()
+            for guild in self.bot.guilds: # iterate over all servers
+
+                if guild.name == "Coding Cougs On Campus":
                     if title is not None:
                         if "Post" in title and "Masters" in title: # skip Post Masters opportunities
                             continue
@@ -47,8 +52,10 @@ class DailyScrape(commands.Cog):
 
                 print(guild.id, flush=True)
                 channel = discord.utils.get(guild.text_channels, name="job-postings")
+                attachment_name = title + ".txt"
                 if channel is not None:
                     await channel.send(msg)
+                    await channel.send(file=discord.File(fp=attachment_io, filename=attachment_name))
                 else:
                     if self.debug:
                         print(f"guild: {guild.name} does not have channel name", flush=True)
@@ -153,6 +160,14 @@ class DailyScrape(commands.Cog):
                 job_info['req_id'] = job_id
 
             job_info['link'] = f'https://careers.pnnl.gov/jobs/{job_id}'
+
+            description = job.get('description')
+            if description is not None:
+                job_info['description'] = description
+
+            responsibilities = job.get('responsibilities')
+            if responsibilities is not None:
+                job_info['responsibilities'] = responsibilities
 
             internships.append(job_info)
         
