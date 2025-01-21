@@ -54,8 +54,7 @@ class DailyScrape(commands.Cog):
                 channel = discord.utils.get(guild.text_channels, name="job-postings")
                 attachment_name = title + ".txt"
                 if channel is not None:
-                    await channel.send(msg)
-                    await channel.send(file=discord.File(fp=attachment_io, filename=attachment_name))
+                    await channel.send(msg, file=discord.File(fp=attachment_io, filename=attachment_name))
                 else:
                     if self.debug:
                         print(f"guild: {guild.name} does not have channel name", flush=True)
