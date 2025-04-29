@@ -45,6 +45,8 @@ class DailyScrape(commands.Cog):
 
                 if guild.name == "Coding Cougs On Campus":
                     if title is not None:
+                        if "High School" in title: # skip high school opportunities
+                            continue
                         if "Post" in title and "Masters" in title: # skip Post Masters opportunities
                             continue
                         if "PhD" in title: # skip PhD opportunities
